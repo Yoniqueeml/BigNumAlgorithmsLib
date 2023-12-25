@@ -30,6 +30,9 @@ public:
     bool operator==(const BigInt& other) const {
         return digits == other.digits && positive == other.positive;
     }
+    bool operator!=(const BigInt& other) const {
+        return !(*this == other);
+    }
     bool operator<=(const BigInt& other) const {
         return !absoluteIsGreaterThan(other);
     }
@@ -151,6 +154,36 @@ public:
         }
         result.removeLeadingZeros();
         result.positive = positive == other.positive;
+        return result;
+    }
+    BigInt& operator=(const BigInt& other) {
+        if (this != &other) {
+            digits = other.digits;
+            positive = other.positive;
+        }
+        return *this;
+    }
+    BigInt(const std::vector<int>& numVec) : positive(true) {
+        digits = numVec;
+        removeLeadingZeros();
+    }
+    BigInt binaryPower(const BigInt& exponent) const {
+        if (exponent != BigInt("0") and exponent <= BigInt("0")) {
+            throw std::runtime_error("Negative exponent not supported");
+        }
+
+        BigInt result("1");
+        BigInt base(*this);
+        BigInt exp(exponent);
+
+        while (exp != BigInt("0") and exp >= BigInt("0")) {
+            if (exp % BigInt("2") == BigInt("1")) {
+                result = result * base;
+            }
+            base = base * base;
+            exp = exp >> 1;
+        }
+
         return result;
     }
 private:
@@ -292,12 +325,17 @@ int main() {
     num7.print();
     std::cout << '\n';
 
-    BigInt num9("8697");
-    BigInt num10("452354");
+    BigInt num9("11222");
+    BigInt num10("2222222");
     BigInt num11 = num9 * num10;
     std::cout << "operator * : ";
     num11.print();
     std::cout << '\n';
 
+    BigInt num12("-15");
+    num12 = num12.binaryPower(BigInt("3"));
+    std::cout << "binaryPower: ";
+    num12.print();
+    std::cout << '\n';
     return 0;
 }
