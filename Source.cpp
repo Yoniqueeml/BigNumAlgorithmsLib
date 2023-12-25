@@ -137,7 +137,22 @@ public:
         result.removeLeadingZeros();
         return result;
     }
+    BigInt operator*(const BigInt& other) const {
+        BigInt result;
+        result.digits.resize(digits.size() + other.digits.size(), 0);
 
+        for (size_t i = 0; i < digits.size(); ++i) {
+            int carry = 0;
+            for (size_t j = 0; j < other.digits.size() || carry; ++j) {
+                long long cur = result.digits[i + j] + (digits[i]) * (j < other.digits.size() ? other.digits[j] : 0) + carry;
+                result.digits[i + j] = cur % 10;
+                carry = cur / 10;
+            }
+        }
+        result.removeLeadingZeros();
+        result.positive = positive == other.positive;
+        return result;
+    }
 private:
     std::pair<BigInt, BigInt> divideWithRemainder(const BigInt& divisor) const {
         if (divisor == BigInt("0")) {
@@ -239,7 +254,7 @@ private:
 int main() {
     BigInt num1("-15");
     BigInt num2("-15");
-    
+    BigInt num15 = num1 * num2;
 
     BigInt sum = num1 + num2;
     BigInt diff = num1 - num2;
@@ -276,5 +291,13 @@ int main() {
     std::cout << "operator >> : ";
     num7.print();
     std::cout << '\n';
+
+    BigInt num9("8697");
+    BigInt num10("452354");
+    BigInt num11 = num9 * num10;
+    std::cout << "operator * : ";
+    num11.print();
+    std::cout << '\n';
+
     return 0;
 }
