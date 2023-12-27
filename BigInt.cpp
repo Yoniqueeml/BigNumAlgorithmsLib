@@ -177,7 +177,8 @@ public:
         int divisor = pow(2, shift);
         int carry = 0;
         int quotient = 0;
-        for (int i = digits.size() - 1; i >= 0; i--) {
+        int carry2 = 0;
+        for (int i = digits.size() - 1; i >= 0; i--) {     
             if (i != 0) {
                 int temp1 = digits[i];
                 int temp2 = carry * 10;
@@ -205,7 +206,7 @@ public:
         result.digits.resize(digits.size() + other.digits.size(), 0);
 
         for (size_t i = 0; i < digits.size(); ++i) {
-            int carry = 0;
+            int carry = 0;                         
             for (size_t j = 0; j < other.digits.size() || carry; ++j) {
                 long long cur = result.digits[i + j] + (digits[i]) * (j < other.digits.size() ? other.digits[j] : 0) + carry;
                 result.digits[i + j] = cur % 10;
@@ -258,9 +259,9 @@ public:
 
         while (exp != BigInt("0") and exp >= BigInt("0")) {
             if (exp % BigInt("2") == BigInt("1")) {
-                result = result * base;
+                result = result * base;  
             }
-            base = base * base;
+            base = base * base; 
             exp = exp >> 1;
         }
 
@@ -295,12 +296,26 @@ public:
         BigInt num(std::to_string(other));
         return *this > num;
     }
+    BigInt operator|(const BigInt& other) const {
+        BigInt result;
+        size_t maxSize = std::max(digits.size(), other.digits.size());
+        std::vector<int> a(digits);
+        std::vector<int> b(other.digits);
+        a.resize(maxSize, 0);
+        b.resize(maxSize, 0);
+        for (size_t i = 0; i < maxSize; ++i) {
+            result.digits.push_back(a[i] | b[i]);
+        }
+        result.removeLeadingZeros();
+        result.positive = positive || other.positive;
 
+        return result;
+    }
     // https://scienceland.info/algebra8/euclid-algorithm
     BigInt GCD(const BigInt& other) const {
-        BigInt a(*this);
+        BigInt a = *this;
         a.positive = true;
-        BigInt b(other);
+        BigInt b = other;
         b.positive = true;
         while (b != BigInt("0")) {
             BigInt temp = b;
@@ -329,8 +344,8 @@ public:
         if (X.digits[0] < 4 && Y.digits[0] < 4)
             return X * Y;
 
-        long long size = fmax(X.digits.size(), Y.digits.size());
-        if (size < 10)
+        long long size = fmax(X.digits.size(), Y.digits.size()); 
+        if (size < 10)   
             return X * Y;
 
         size = (size / 2) + (size % 2);
@@ -348,22 +363,19 @@ public:
         return u + ((z - u - v) * multiplier) + increasing_Discharge(v, 2 * size);
     }
 
-    BigInt montgomeryReduce(const BigInt& ab, const BigInt& P, const BigInt& Pinv, const BigInt& r, const BigInt& r2) const {
-        BigInt m = ab * Pinv % r;
-        return ((ab + m * P) / r).first;
+    BigInt myPow(BigInt base, BigInt mod) {
+        BigInt temp = *this;
+        for (BigInt i = BigInt("0"); i < base; i = i + BigInt("1")) {
+            temp = temp * (*this);
+            while (temp >= mod) {
+                temp = temp - mod;
+            }
+        }
+        while (temp >= mod) {
+            temp = temp - mod;
+        }
+        return temp;
     }
-
-    BigInt montgomeryTransform(const BigInt& a, const BigInt& r2, const BigInt& Pinv, const BigInt& r) const {
-        return montgomeryReduce(a * r2, *this, Pinv, r, r2);
-    }
-
-    BigInt montgomeryMultiply(const BigInt& a, const BigInt& b, const BigInt& r2, const BigInt& Pinv, const BigInt& r) const {
-        BigInt aPrim = montgomeryTransform(a, r2, Pinv, r);
-        BigInt bPrim = montgomeryTransform(b, r2, Pinv, r);
-        BigInt prodPrim = montgomeryReduce(aPrim * bPrim, *this, Pinv, r, r2);
-        return montgomeryReduce(prodPrim, *this, Pinv, r, r2);
-    }
-
     BigInt powMod(BigInt a, BigInt e, BigInt m) {
         BigInt r("1");
         while (e > 0) {
@@ -375,7 +387,55 @@ public:
         }
         return r;
     }
+
+    BigInt montgomeryProd(BigInt& a, BigInt& b, BigInt& P, BigInt& Pinv, BigInt& r, BigInt& r2) {
+        BigInt two("2");
+        BigInt degree("64");
+
+        r2 = powMod(two, degree, P);
+
+        std::string str = getMod(P);
+        unsigned long long p = 0, a1 = -stoi(str), e1 = -1, m = 4294967296;
+        p = powMod(a1, e1, m);
+        Pinv = std::to_string(p);
+
+        BigInt a_prim = m_transform(a, r2, Pinv, r, P); // mult a by 2 ^ 32
+        BigInt b_prim = m_transform(b, r2, Pinv, r, P); // mult b by 2 ^ 32
+        BigInt prod_prim = m_reduce(a_prim * b_prim, Pinv, r, P); // divide a' * b' by 2 ^ 32
+        BigInt prod = m_reduce(prod_prim, Pinv, r, P); // divide prod' by 2^32
+        prod.print();
+        return prod;
+    }
 private:
+    std::string getMod(const BigInt& mod) {
+        std::string str;
+        for (size_t i = 0; i < mod.digits.size(); ++i) {
+            str += std::to_string(mod.digits[i]);
+        }
+        reverse(str.begin(), str.end());
+        return str;
+    }
+
+    unsigned long long powMod(unsigned long long a, unsigned long long e, unsigned long long m) {
+        unsigned long long r = 1;
+        while (e > 0) {
+            if (e & 1)
+                r = (r * a) % m;
+            e >>= 1;
+            a = (unsigned long long)(a * a) % m;
+        }
+        //std::cout << "A=" << a << ", E=" << e << ", R=" << r << std::endl;
+        return r;
+    }
+
+    BigInt m_reduce(BigInt ab, BigInt Pinv, BigInt r, BigInt P) {
+        BigInt m = ab * Pinv % r;
+        return ((ab + m * P) / r).first;
+    }
+
+    BigInt m_transform(BigInt a, BigInt r2, BigInt Pinv, BigInt r, BigInt P) {
+        return m_reduce((a * r2), Pinv, r, P);
+    }
     std::pair<BigInt, std::pair<BigInt, BigInt>> extGCD(const BigInt& a, const BigInt& b, BigInt& x, BigInt& y) {
         if (a == BigInt("0")) {
             x = BigInt("0");
@@ -397,7 +457,7 @@ private:
         BigInt quotient("0");
         BigInt remainder(*this);
 
-        while (remainder >= divisor) {
+        while (remainder >= divisor) { 
             BigInt temp = divisor;
             BigInt multiple("1");
             while (temp <= remainder) {
@@ -447,9 +507,8 @@ private:
             int diff = borrow;
             if (i < digits.size()) diff += digits[i];
             if (i < other.digits.size()) diff -= other.digits[i];
-
             if (diff < 0) {
-                diff += 10;
+                diff += 10; 
                 borrow = -1;
             }
             else {
@@ -479,4 +538,3 @@ private:
         }
     }
 };
-

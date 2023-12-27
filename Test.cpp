@@ -200,6 +200,18 @@ static void TestQuaryPow() {
     assert(result3 == expected3);
 }
 
+static void TestMontgomery() {
+    BigInt num1("36363");
+    BigInt num2("139393");
+    BigInt num3("533");
+    BigInt expected1("274");
+    BigInt r("4294967296");
+    BigInt r1, r2;
+    BigInt result1 = num1.montgomeryProd(num1, num2, num3, r1, r, r2);
+    assert(result1 == expected1);
+    std::cout << "Montgomery complete" << std::endl;
+}
+
 static void startTests() {
     TestSum();
     TestSub();
@@ -212,4 +224,5 @@ static void startTests() {
     TestShiftRight();
     TestBinaryPow();
     TestQuaryPow();
+    TestMontgomery();
 }
